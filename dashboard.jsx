@@ -18,11 +18,14 @@ import {
 
 // --- FIREBASE KONFIGURÁCIÓ ---
 // Ezeket a környezet automatikusan kitölti a Vercel-en keresztül
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'bodi-dashboard-app';
+const firebaseConfig = {
+  apiKey: "AIzaSyB2QBRQfHJwv1MJHYqGcljxXxaQx5viHqM",
+  authDomain: "dashboardtome.firebaseapp.com",
+  projectId: "dashboardtome",
+  storageBucket: "dashboardtome.firebasestorage.app",
+  messagingSenderId: "927951871184",
+  appId: "1:927951871184:web:ffc225ba9047fcc9f552d5"
+};
 
 const CATEGORIES = [
   "Iskolai admin", "Cselló tanszak", "Zenekar", "Vándortalálkozó",
