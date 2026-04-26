@@ -1,24 +1,24 @@
 import { defineConfig } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  // Kiterjesztett feloldás, hogy ne akadjon el a .js / .jsx különbségen
   resolve: {
+    // Ez a rész kezeli a @/ kódokat, amik a hibaüzenetedben szerepeltek
+    alias: {
+      "@": path.resolve(__dirname, "./"),
+    },
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
   },
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Segít a külső könyvtárak (pl. lucide-react) kezelésében
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
     },
-  },
-  // Kényszerített optimalizálás
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'firebase/app', 'firebase/firestore', 'lucide-react'],
   },
   server: {
     port: 3000,
