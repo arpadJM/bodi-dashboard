@@ -8,13 +8,13 @@ import {
 } from 'firebase/auth';
 import { 
   getFirestore, doc, collection, onSnapshot, 
-  updateDoc, addDoc
+  updateDoc, addDoc, deleteDoc, query
 } from 'firebase/firestore';
 import { 
-  Lock, LogOut, Plus, Calendar, User, CheckCircle2, Mail, Key 
+  Lock, LogOut, CheckCircle2, Mail, Key, Trash2, Clock, Calendar as CalIcon
 } from 'lucide-react';
 
-// --- FIREBASE KONFIGURÁCIÓ (Beégetve a biztos működéshez) ---
+// --- FIREBASE CONFIG ---
 const firebaseConfig = {
   apiKey: "AIzaSyB2QBRQfHJwv1MJHYqGcljxXxaQx5viHqM",
   authDomain: "dashboardtome.firebaseapp.com",
@@ -27,112 +27,99 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const customAppId = 'dashboardtome';
+const appId = 'dashboardtome';
 
 const CATEGORIES = [
   "Iskolai admin", "Cselló tanszak", "Zenekar", "Vándortalálkozó",
   "Zeneszerzés", "Tanulás", "Digitális feladatok", "Pénzügyek", "Személyes"
 ];
 
-const App = () => {
+export default function App() {
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
+  const [error, setError] = useState("");
   const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState({
-    title: "", date: "", category: CATEGORIES[0], completed: false
-  });
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [selectedCat, setSelectedCat] = useState(CATEGORIES[0]);
 
+  // Auth figyelő
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      setAuthLoading(false);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  // Adatok figyelője
   useEffect(() => {
     if (!user) return;
-    const tasksRef = collection(db, 'artifacts', customAppId, 'public', 'data', 'tasks');
-    const unsubscribe = onSnapshot(tasksRef, (snapshot) => {
-      const taskList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTasks(taskList);
-    }, (error) => {
-      console.error("Firestore error:", error);
-    });
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setTasks(list);
+      },
+      (err) => console.error("Firestore hiba:", err)
+    );
     return () => unsubscribe();
   }, [user]);
 
-  const handleLogin = async (e) => {
+  const login = async (e) => {
     e.preventDefault();
-    setLoginError("");
+    setError("");
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      setLoginError("Sikertelen belépés. Ellenőrizd az e-mail címet és jelszót!");
+      setError("Hibás adatok!");
     }
   };
 
-  const handleLogout = () => signOut(auth);
-
-  const handleAddTask = async (e) => {
+  const addTask = async (e) => {
     e.preventDefault();
-    if (!newTask.title || !user) return;
-    try {
-      await addDoc(collection(db, 'artifacts', customAppId, 'public', 'data', 'tasks'), newTask);
-      setNewTask({ ...newTask, title: "" });
-    } catch (err) {
-      console.error("Hiba a hozzáadásnál:", err);
-    }
+    if (!newTaskTitle.trim()) return;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'tasks'), {
+      title: newTaskTitle,
+      category: selectedCat,
+      completed: false,
+      createdAt: new Date().toISOString()
+    });
+    setNewTaskTitle("");
   };
 
-  const toggleComplete = async (task) => {
-    try {
-      await updateDoc(doc(db, 'artifacts', customAppId, 'public', 'data', 'tasks', task.id), { 
-        completed: !task.completed 
-      });
-    } catch (err) {
-      console.error("Hiba a frissítésnél:", err);
-    }
+  const toggleTask = async (task) => {
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', task.id), {
+      completed: !task.completed
+    });
   };
 
-  if (authLoading) return (
-    <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-bold uppercase tracking-widest">
-      Betöltés...
-    </div>
-  );
+  const deleteTask = async (id) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id));
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">BETÖLTÉS...</div>;
 
   if (!user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-100 p-4">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md">
-          <div className="flex justify-center mb-8">
-            <div className="bg-indigo-600 p-5 rounded-2xl shadow-lg shadow-indigo-200">
-              <Lock className="text-white" size={32} />
-            </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-md border border-slate-100">
+          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-100">
+            <Lock className="text-white" />
           </div>
-          <h2 className="text-2xl font-black text-center text-slate-800 mb-8 uppercase tracking-tighter italic">Bodi Dashboard</h2>
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="relative group">
-              <Mail className="absolute left-4 top-4 text-slate-300 group-focus-within:text-indigo-500 transition" size={20} />
-              <input 
-                type="email" placeholder="E-mail cím" required
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                value={email} onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="relative group">
-              <Key className="absolute left-4 top-4 text-slate-300 group-focus-within:text-indigo-500 transition" size={20} />
-              <input 
-                type="password" placeholder="Jelszó" required
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                value={password} onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-            {loginError && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg">{loginError}</p>}
-            <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-indigo-600 transition-all uppercase tracking-widest shadow-lg">Belépés</button>
+          <h1 className="text-2xl font-black text-center text-slate-800 mb-8 uppercase italic tracking-tight">Bodi Dashboard</h1>
+          <form onSubmit={login} className="space-y-4">
+            <input 
+              type="email" placeholder="Email" className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              value={email} onChange={e => setEmail(e.target.value)}
+            />
+            <input 
+              type="password" placeholder="Jelszó" className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              value={password} onChange={e => setPassword(e.target.value)}
+            />
+            {error && <p className="text-red-500 text-sm text-center font-bold">{error}</p>}
+            <button className="w-full p-4 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-indigo-600 transition-all">Belépés</button>
           </form>
         </div>
       </div>
@@ -140,56 +127,52 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-10">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-10 bg-white p-6 rounded-[2rem] shadow-sm border border-white">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-black">Á</div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Üdvözöllek</p>
-              <p className="font-black text-slate-800 uppercase italic">Árpád</p>
-            </div>
+        <header className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-xl font-black uppercase italic">Dashboard</h1>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString('hu-HU')}</p>
           </div>
-          <button onClick={handleLogout} className="p-3 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
-            <LogOut size={20}/>
+          <button onClick={() => signOut(auth)} className="p-3 bg-white rounded-xl shadow-sm text-slate-400 hover:text-red-500 transition-all">
+            <LogOut size={20} />
           </button>
         </header>
 
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm mb-10 border border-white">
-           <form onSubmit={handleAddTask} className="flex flex-wrap gap-4">
-              <input 
-                type="text" placeholder="Mi a következő feladat?" required
-                className="flex-1 p-4 rounded-2xl bg-slate-50 border-none text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})}
-              />
-              <select 
-                className="p-4 rounded-2xl bg-slate-50 border-none text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                value={newTask.category} onChange={e => setNewTask({...newTask, category: e.target.value})}
-              >
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <button type="submit" className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
-                Hozzáadás
-              </button>
-           </form>
-        </div>
+        <section className="bg-white p-6 rounded-[2rem] shadow-sm mb-10 border border-slate-100">
+          <form onSubmit={addTask} className="flex flex-wrap gap-4">
+            <input 
+              type="text" placeholder="Új feladat..." className="flex-1 min-w-[200px] p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+              value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+            />
+            <select 
+              className="p-4 bg-slate-50 rounded-xl outline-none font-bold"
+              value={selectedCat} onChange={e => setSelectedCat(e.target.value)}
+            >
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-50">Hozzáadás</button>
+          </form>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {CATEGORIES.map(cat => (
-            <div key={cat} className="bg-white/40 p-6 rounded-[2.5rem] border border-white/60 backdrop-blur-sm">
-              <h3 className="text-[11px] font-black uppercase text-slate-400 mb-6 tracking-[0.2em] px-2">{cat}</h3>
+            <div key={cat} className="bg-slate-100/50 p-6 rounded-[2rem] border border-white">
+              <h2 className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest px-2">{cat}</h2>
               <div className="space-y-3">
                 {tasks.filter(t => t.category === cat).map(t => (
-                  <div key={t.id} className={`group bg-white p-5 rounded-3xl shadow-sm flex justify-between items-center transition-all hover:shadow-md border border-transparent hover:border-indigo-100 ${t.completed ? 'opacity-40 grayscale' : ''}`}>
-                    <span className={`text-sm font-bold text-slate-700 ${t.completed ? 'line-through' : ''}`}>{t.title}</span>
-                    <button onClick={() => toggleComplete(t)} className={`transition-colors ${t.completed ? 'text-green-500' : 'text-slate-200 group-hover:text-indigo-400'}`}>
-                      <CheckCircle2 size={24} fill={t.completed ? "currentColor" : "none"} />
-                    </button>
+                  <div key={t.id} className={`group bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between transition-all ${t.completed ? 'opacity-40' : ''}`}>
+                    <span className={`text-sm font-bold ${t.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{t.title}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleTask(t)} className={t.completed ? 'text-green-500' : 'text-slate-200 hover:text-indigo-500'}>
+                        <CheckCircle2 size={20} />
+                      </button>
+                      <button onClick={() => deleteTask(t.id)} className="text-slate-100 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))}
-                {tasks.filter(t => t.category === cat).length === 0 && (
-                  <p className="text-[10px] text-slate-300 italic text-center py-4">Nincs feladat ebben a kategóriában.</p>
-                )}
               </div>
             </div>
           ))}
@@ -197,6 +180,4 @@ const App = () => {
       </div>
     </div>
   );
-};
-
-export default App;
+}
