@@ -7,17 +7,14 @@ import {
   signOut 
 } from 'firebase/auth';
 import { 
-  getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
-  updateDoc, deleteDoc, addDoc, query, getDocs, writeBatch 
+  getFirestore, doc, collection, onSnapshot, 
+  updateDoc, addDoc 
 } from 'firebase/firestore';
 import { 
-  Lock, LogOut, ChevronDown, ChevronUp, Edit3, Trash2, Plus, 
-  Sparkles, Send, Calendar, AlertCircle, User, Music, BookOpen, 
-  Laptop, Wallet, CheckCircle2, GripVertical, RefreshCw, Mail, Key 
+  Lock, LogOut, Plus, Calendar, User, CheckCircle2, Mail, Key 
 } from 'lucide-react';
 
 // --- FIREBASE KONFIGURÁCIÓ ---
-// Ezeket a környezet automatikusan kitölti a Vercel-en keresztül
 const firebaseConfig = {
   apiKey: "AIzaSyB2QBRQfHJwv1MJHYqGcljxXxaQx5viHqM",
   authDomain: "dashboardtome.firebaseapp.com",
@@ -26,6 +23,12 @@ const firebaseConfig = {
   messagingSenderId: "927951871184",
   appId: "1:927951871184:web:ffc225ba9047fcc9f552d5"
 };
+
+// Inicializálás
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const customAppId = 'dashboardtome'; // Ez azonosítja a te projektadatidat
 
 const CATEGORIES = [
   "Iskolai admin", "Cselló tanszak", "Zenekar", "Vándortalálkozó",
@@ -38,7 +41,6 @@ const App = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dropTargetCategory, setDropTargetCategory] = useState(null);
@@ -56,11 +58,12 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  // Adatok betöltése Firestore-ból (csak ha be van jelentkezve)
+  // Adatok betöltése Firestore-ból
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const tasksRef = collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
+    // Javított elérési út a szabályoknak megfelelően
+    const tasksRef = collection(db, 'artifacts', customAppId, 'public', 'data', 'tasks');
     const unsubscribe = onSnapshot(tasksRef, (snapshot) => {
       const taskList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setTasks(taskList);
@@ -87,26 +90,29 @@ const App = () => {
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.title || !user) return;
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'tasks'), newTask);
-    setNewTask({ title: "", date: "", priority: 2, category: CATEGORIES[0], details: "", completed: false });
+    try {
+      await addDoc(collection(db, 'artifacts', customAppId, 'public', 'data', 'tasks'), newTask);
+      setNewTask({ title: "", date: "", priority: 2, category: CATEGORIES[0], details: "", completed: false });
+    } catch (err) {
+      console.error("Hiba a mentéskor:", err);
+    }
   };
 
   const toggleComplete = async (task) => {
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', task.id), { completed: !task.completed });
+    await updateDoc(doc(db, 'artifacts', customAppId, 'public', 'data', 'tasks', task.id), { completed: !task.completed });
   };
 
   const handleDrop = async (e, targetCategory) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     if (taskId) {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { category: targetCategory });
+      await updateDoc(doc(db, 'artifacts', customAppId, 'public', 'data', 'tasks', taskId), { category: targetCategory });
     }
     setDropTargetCategory(null);
   };
 
   if (authLoading) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-black italic">ELLENŐRZÉS...</div>;
 
-  // 1. BEJELENTKEZŐ FELÜLET
   if (!user) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-100 p-4 font-sans">
@@ -118,7 +124,6 @@ const App = () => {
           </div>
           <h2 className="text-2xl font-black text-center text-slate-800 mb-2">Bodi Dashboard</h2>
           <p className="text-center text-slate-400 text-sm mb-8 italic">Privát munkaterület</p>
-          
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="relative">
               <Mail className="absolute left-4 top-4 text-slate-300" size={20} />
@@ -137,8 +142,8 @@ const App = () => {
               />
             </div>
             {loginError && <p className="text-red-500 text-[10px] font-black uppercase text-center">{loginError}</p>}
-            <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition">
-              BEJELENTKEZÉS
+            <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition uppercase">
+              Bejelentkezés
             </button>
           </form>
         </div>
@@ -146,16 +151,14 @@ const App = () => {
     );
   }
 
-  // 2. DASHBOARD FELÜLET
   return (
     <div className="min-h-screen bg-[#F1F5F9] p-4 md:p-10 font-sans">
       <div className="max-w-[1800px] mx-auto">
-        
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
             <div className="bg-white p-3 rounded-2xl shadow-sm"><User className="text-indigo-600" size={24} /></div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight tracking-tight uppercase italic">Szia, {user.email?.split('@')[0]}!</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight tracking-tight uppercase italic">Szia!</h1>
               <p className="text-[10px] text-slate-400 font-black tracking-widest uppercase">Minden adat szinkronizálva</p>
             </div>
           </div>
@@ -169,7 +172,7 @@ const App = () => {
           <form onSubmit={handleAddTask} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-[2rem]">
             <input 
               type="text" placeholder="Feladat megnevezése..." 
-              className="md:col-span-1 p-3 rounded-xl bg-white text-sm font-bold outline-none border-none" 
+              className="p-3 rounded-xl bg-white text-sm font-bold outline-none border-none" 
               value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} 
             />
             <select className="p-3 rounded-xl bg-white text-sm font-bold outline-none border-none" value={newTask.category} onChange={e => setNewTask({...newTask, category: e.target.value})}>
@@ -191,9 +194,6 @@ const App = () => {
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{cat}</h3>
-                <span className="bg-white px-3 py-1 rounded-full text-[10px] font-black shadow-sm text-slate-400">
-                  {tasks.filter(t => t.category === cat && !t.completed).length}
-                </span>
               </div>
               <div className="space-y-3">
                 {tasks.filter(t => t.category === cat).map(t => (
@@ -208,10 +208,6 @@ const App = () => {
                         <button onClick={() => toggleComplete(t)} className={t.completed ? 'text-green-500' : 'text-slate-200 hover:text-indigo-400'}>
                             <CheckCircle2 size={20}/>
                         </button>
-                    </div>
-                    <div className="flex items-center gap-1 mt-4 text-slate-300 font-black italic">
-                        <Calendar size={12}/>
-                        <span className="text-[9px] uppercase tracking-wider">{t.date || 'Dátum nélkül'}</span>
                     </div>
                   </div>
                 ))}
