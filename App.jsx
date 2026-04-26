@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, collection, onSnapshot, updateDoc, addDoc, query } from 'firebase/firestore';
-import { Lock, LogOut, Plus, Calendar, User, CheckCircle2, Mail, Key, Layout } from 'lucide-react';
+import { getFirestore, doc, collection, onSnapshot, updateDoc, addDoc } from 'firebase/firestore';
+import { LogOut, CheckCircle2 } from 'lucide-react';
 
 // --- ABSZOLÚT PONTOS FIREBASE KONFIGURÁCIÓ ---
 const firebaseConfig = {
@@ -81,8 +81,20 @@ export default function App() {
         <div className="bg-white p-10 rounded-[2rem] shadow-xl w-full max-w-md border border-slate-200">
           <h2 className="text-2xl font-black text-center mb-6 text-slate-800 uppercase italic">Bodi Dashboard</h2>
           <form onSubmit={handleLogin} className="space-y-4">
-            <input type="email" placeholder="Email" className="w-full p-4 rounded-xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" value={email} onChange={e => setEmail(e.target.value)} />
-            <input type="password" placeholder="Jelszó" className="w-full p-4 rounded-xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" value={password} onChange={e => setPassword(e.target.value)} />
+            <input 
+              type="email" 
+              placeholder="Email" 
+              className="w-full p-4 rounded-xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+            />
+            <input 
+              type="password" 
+              placeholder="Jelszó" 
+              className="w-full p-4 rounded-xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+            />
             {loginError && <p className="text-red-500 text-xs font-bold text-center">{loginError}</p>}
             <button className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-indigo-600 transition">Belépés</button>
           </form>
@@ -100,11 +112,21 @@ export default function App() {
         </div>
 
         <form onSubmit={addTask} className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-3xl shadow-md">
-          <input type="text" placeholder="Új feladat..." className="p-3 bg-slate-50 rounded-xl outline-none" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
-          <select className="p-3 bg-slate-50 rounded-xl outline-none" value={newTask.category} onChange={e => setNewTask({...newTask, category: e.target.value})}>
+          <input 
+            type="text" 
+            placeholder="Új feladat..." 
+            className="p-3 bg-slate-50 rounded-xl outline-none" 
+            value={newTask.title} 
+            onChange={e => setNewTask({...newTask, title: e.target.value})} 
+          />
+          <select 
+            className="p-3 bg-slate-50 rounded-xl outline-none" 
+            value={newTask.category} 
+            onChange={e => setNewTask({...newTask, category: e.target.value})}
+          >
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button className="bg-indigo-600 text-white rounded-xl font-bold uppercase py-3">Hozzáadás</button>
+          <button className="bg-indigo-600 text-white rounded-xl font-bold uppercase py-3 text-sm">Hozzáadás</button>
         </form>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
